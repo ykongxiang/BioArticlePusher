@@ -147,6 +147,10 @@ AI过滤配置，用于使用AI模型评估文章相关性。
 - `language`: AI描述语言设置（`"zh"` 中文，`"en"` 英文，默认：`"zh"`）
   - 影响AI生成的description字段的语言
   - 需要在提示词中使用 `{language}` 占位符
+- `max_articles_for_filtering`: 最大检索上限，控制交给AI过滤的文章数量（默认：100，0表示无限制）
+  - 当检索到的文章数量超过此上限时，只对前N篇文章进行AI过滤
+  - 可以有效控制AI过滤的处理时间，避免处理过多文章导致脚本运行时间过长
+  - 示例：设置为 `10` 时，即使检索到209篇文章，也只会对前10篇进行AI过滤
 - `model.provider`: 模型提供商（kimi, deepseek, openai）
 - `model.name`: 模型名称
 - `model.api_key`: API密钥（从secrets.yaml引用：`${secrets.ai.kimi.api_key}`）
@@ -154,6 +158,15 @@ AI过滤配置，用于使用AI模型评估文章相关性。
 - `model.temperature`: 模型温度参数（0.0-1.0，默认：0.1）
 - `model.max_tokens`: 最大生成token数（默认：1000）
 - `prompt`: AI过滤提示词，可自定义评估标准（可使用 `{language}` 占位符）
+
+**最大检索上限使用示例：**
+```yaml
+ai_filtering:
+  enabled: true
+  max_articles_for_filtering: 50  # 最多处理50篇文章
+  # 设置为 0 表示无限制，处理所有检索到的文章
+  # 设置为 10 可以快速测试，只处理前10篇文章
+```
 
 **支持的AI提供商：**
 

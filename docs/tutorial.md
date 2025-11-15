@@ -135,6 +135,7 @@ authors:
 ai_filtering:
   enabled: true
   demo_mode: false          # 设为true可以测试而无需API密钥
+  max_articles_for_filtering: 100  # 最大检索上限，控制交给AI过滤的文章数量（0表示无限制）
 
   model:
     provider: "kimi"
@@ -142,6 +143,13 @@ ai_filtering:
     temperature: 0.1
     max_tokens: 1000
 ```
+
+**最大检索上限说明：**
+- 当检索到的文章数量超过此上限时，只对前N篇文章进行AI过滤
+- 可以有效控制AI过滤的处理时间，避免处理过多文章导致脚本运行时间过长
+- 设置为 `0` 表示无限制，处理所有检索到的文章
+- 设置为较小的值（如 `10`）可以快速测试功能
+- 日志中会显示是否应用了限制，例如：`📊 检索到 209 篇文章，应用最大检索上限 10 篇`
 
 ## 💻 命令行使用
 
@@ -335,6 +343,7 @@ feishu:
 ai_filtering:
   enabled: true              # 是否启用AI过滤
   demo_mode: false          # 演示模式，无需API key
+  max_articles_for_filtering: 100  # 最大检索上限，控制交给AI过滤的文章数量（0表示无限制）
   model:
     provider: "kimi"        # 模型提供商
     name: "kimi-k2-0905-preview"  # 模型名称
@@ -345,6 +354,18 @@ ai_filtering:
   prompt: |                 # AI过滤提示词
     Evaluate this article...
 ```
+
+**最大检索上限 (`max_articles_for_filtering`)：**
+- **作用**：当检索到的文章数量超过此上限时，只对前N篇文章进行AI过滤
+- **默认值**：100
+- **设置为 0**：无限制，处理所有检索到的文章
+- **使用场景**：
+  - 快速测试：设置为 `10` 可以快速验证功能
+  - 控制处理时间：设置为 `50` 可以限制AI过滤的处理时间
+  - 大量文章：当检索到数百篇文章时，可以设置合理的上限避免处理时间过长
+- **日志提示**：系统会在日志中显示是否应用了限制，例如：
+  - `📊 检索到 209 篇文章，应用最大检索上限 10 篇`
+  - `✓ 已限制为前 10 篇文章进行AI过滤`
 
 #### 支持的AI提供商
 
@@ -586,9 +607,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 ### 性能优化
 
-- 减少搜索天数以加快速度
-- 启用演示模式跳过AI调用
-- 调整最大结果数限制
+- **减少搜索天数**：减少 `search_config.days` 值以加快速度
+- **启用演示模式**：设置 `ai_filtering.demo_mode: true` 跳过AI调用
+- **调整最大结果数限制**：减少 `search_config.max_results_per_journal` 值
+- **设置AI过滤上限**：使用 `ai_filtering.max_articles_for_filtering` 限制处理文章数量
+  - 例如：设置为 `50` 时，即使检索到200篇文章，也只会对前50篇进行AI过滤
+  - 可以有效控制处理时间，避免脚本运行时间过长
 
 ## ⚡ 高级配置
 
