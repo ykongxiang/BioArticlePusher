@@ -648,6 +648,16 @@ class ArticleSearcher:
         for journal_articles in articles.values():
             all_articles.extend(journal_articles)
 
+        # 应用最大检索上限
+        max_articles = ai_config.get("max_articles_for_filtering", 0)
+        original_count = len(all_articles)
+        if max_articles > 0 and len(all_articles) > max_articles:
+            logger.info(f"📊 检索到 {original_count} 篇文章，应用最大检索上限 {max_articles} 篇")
+            all_articles = all_articles[:max_articles]
+            logger.info(f"✓ 已限制为前 {max_articles} 篇文章进行AI过滤")
+        else:
+            logger.info(f"📊 检索到 {original_count} 篇文章，全部进行AI过滤")
+
         # AI过滤
         filtered_articles = filter_articles_with_ai(all_articles, self.config)
 

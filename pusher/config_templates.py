@@ -87,6 +87,7 @@ def create_config_template(output_path: Optional[str] = None) -> str:
             "enabled": True,
             "demo_mode": False,
             "language": "zh",  # 语言设置 (zh: 中文, en: 英文)
+            "max_articles_for_filtering": 100,  # 最大检索上限，控制交给AI过滤的文章数量（0表示无限制）
             "model": {
                 "provider": "kimi",
                 "name": "kimi-k2-0905-preview",
