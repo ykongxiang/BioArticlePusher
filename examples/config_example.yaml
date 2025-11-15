@@ -1,0 +1,125 @@
+# article_search_config.yaml
+# BioArticlePusher 配置文件模板
+# 使用方法：复制此文件为 config.yaml 并根据需要修改
+
+# 搜索参数
+search_config:
+  days: 7                    # 搜索最近几天
+  max_results_per_journal: 20 # 每个期刊最大结果数
+
+# 期刊配置
+journals:
+  # PubMed 期刊列表
+  pubmed_journals:
+    - Nature Biotechnology
+    - Nature Methods
+    - Nature Machine Intelligence
+    - Genome Biology
+    - Bioinformatics
+
+  # BioRxiv 配置
+  biorxiv:
+    enabled: true
+    subjects:
+      - bioinformatics
+      - computational_biology
+      - genomics
+
+# 关键词配置
+keywords:
+  # 任意匹配关键词
+  any:
+    - bioinformatics
+    - computational biology
+    - machine learning
+    - deep learning
+    - foundation model
+    - virtual cell
+    - aging
+    - metabolomics
+    - proteomics
+
+  # 必须全部包含的关键词
+  all: []
+
+# 作者过滤配置
+authors:
+  mode: "biorxiv_only"      # "biorxiv_only" 或 "all"
+  include:
+    - "Fabian Theis"
+    - "David Baker"
+    - "Aviv Regev"
+  exclude: []
+
+# 输出配置
+output:
+  filename_format: "search_results_{days}days.json"
+  show_details: true
+  abstract_max_length: -1
+
+# AI 过滤配置
+ai_filtering:
+  enabled: true
+  demo_mode: false          # 演示模式（无需API key）
+
+  model:
+    provider: "kimi"
+    name: "kimi-k2-0905-preview"
+    api_key: "${secrets.ai.kimi.api_key}"
+    base_url: "${secrets.ai.kimi.base_url}"
+    temperature: 0.1
+    max_tokens: 1000
+
+  prompt: |
+    Evaluate this article for relevance to specific biological processes/applications.
+
+    Core Application Areas:
+    1. phenotype from genotype
+    2. life cycle simulation
+    3. cell cycle regulator
+    4. single-cell multi-omics
+    5. scATAC-seq
+    6. scRNA-seq
+    7. chromatin accessibility
+    8. gene regulatory network
+    9. enhancer-gene linking
+    10. chromatin potential
+    11. GWAS variant enrichment
+    12. eQTL
+    13. metabolomics analysis
+    14. proteomics analysis
+    15. computational metabolomics
+    16. computational proteomics
+    17. virtual cell
+    18. aging
+    19. foundation model
+
+    Article Information:
+    Title: {title}
+    Abstract: {abstract}
+    Journal: {journal}
+
+    Instructions:
+    - Determine if the article focuses on ONE OR MORE of the core application areas above
+    - If relevant, provide a brief description in Chinese of the main work and which application area(s) it addresses
+    - Score relevance from 1-10 (10 being most relevant to core areas)
+    - Be strict: only mark as relevant if it directly addresses biological processes in these areas
+
+    Return JSON only:
+    {{
+      "relevant": true/false,
+      "score": 1-10,
+      "description": "Brief description in Chinese of main work and application area(s)",
+      "application_areas": ["list of matching areas from above"]
+    }}
+
+# 飞书推送配置
+feishu:
+  enabled: true
+  webhook_url: "${secrets.feishu.webhook_url}"
+
+  push_config:
+    max_articles_per_push: 10
+    include_abstract: true
+    abstract_max_length: 200
+    include_ai_evaluation: true

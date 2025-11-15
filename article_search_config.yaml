@@ -1,0 +1,265 @@
+# article_search_config.yaml
+# 期刊文章搜索配置文件
+
+# 搜索参数
+search_config:
+  # 搜索天数 (默认7天)
+  days: 7
+
+  # 每个期刊最大结果数
+  max_results_per_journal: 20
+
+# 期刊配置
+journals:
+  # PubMed 期刊列表 (使用PubMed正式期刊名称)
+  pubmed_journals:
+    - Nature
+    - Science
+    - Cell
+    - PNAS
+    - BMC Genomics
+    - Cell Reports
+    - Cell Systems
+    - Cell Metabolism
+    - Cell Host & Microbe
+    - Cell Death & Disease
+    - Molecular Cell
+    - Cell Genomics
+    - Science Advances
+    - Nucleic Acids Research
+    - Nature Genetics
+    - Nature Communications
+    - Nature Reviews Genetics
+    - Nature Biotechnology
+    - Nature Methods
+    - Nature Protocols
+    - Nature Communications
+    - Nature Machine Intelligence
+    - Nature Computational Science
+    - Genome Biology
+    - Genome Research
+    - Bioinformatics
+    - Briefings in Bioinformatics
+    - PLOS Computational Biology
+    - Journal of Computational Biology
+
+
+
+  # BioRxiv 配置
+  biorxiv:
+    enabled: true
+    subjects:
+      - bioinformatics
+      - computational_biology
+      - genomics
+      - systems_biology
+
+# 关键词配置
+keywords:
+  # 主要关键词 (任意匹配)
+  any:
+    - bioinformatics
+    - computational biology
+    - machine learning
+    - deep learning
+    - neural network
+    - transformer
+    - foundation model
+    - large language model
+    - protein language model
+    - genomic model
+    - multi-modal
+    - graph neural network
+    - attention mechanism
+    - self-supervised learning
+    - representation learning
+    - computational method
+    - algorithm
+    - model architecture
+    - evaluation benchmark
+    - performance metric
+    - biological data
+    - omics data
+    - sequencing data
+    - single-cell
+    - spatial transcriptomics
+    - drug discovery
+    - protein structure
+    - gene regulation
+    - network analysis
+    - metabolism
+    - metabolomics
+    - proteomics
+    - metabolome
+    - proteome
+    - mass spectrometry
+    - lc-ms
+    - gc-ms
+    - computational metabolomics
+    - computational proteomics
+    - virtual cell
+    - cell simulation
+    - cellular modeling
+    - in silico cell
+    - aging
+    - ageing
+    - senescence
+    - longevity
+    - aging biology
+    - foundation model
+    - foundational model
+    - multimodal foundation model
+    - biology foundation model
+    - omics foundation model
+    - metabolic profiling
+    - protein identification
+    - protein quantification
+    - biomarker discovery
+    - RNA structure
+    - RNA folding
+    - Protein design
+
+  # 必须包含的关键词 (全部匹配)
+  all: [""]
+
+# 作者过滤 (可选)
+authors:
+  # 过滤模式: "biorxiv_only" 或 "all"
+  # biorxiv_only: 仅对BioRxiv文章进行作者过滤
+  # all: 对所有来源的文章进行作者过滤
+  mode: "biorxiv_only"
+  
+  # 包含这些作者的文章 (必须完全匹配)
+  include:
+    - "Fabian Theis"
+    - "David Baker"
+    - "Aviv Regev"
+
+  # 排除这些作者的文章
+  exclude: []
+
+# 输出配置
+output:
+  # 输出文件名格式 (支持 {days} 占位符)
+  filename_format: "search_results_{days}days.json"
+
+  # 是否显示详细信息
+  show_details: true
+
+  # 摘要长度限制 (-1表示不限制)
+  abstract_max_length: -1
+
+# AI 过滤配置
+ai_filtering:
+  # 是否启用 AI 过滤
+  enabled: true
+
+  # 演示模式 (无需API key，使用模拟结果)
+  demo_mode: false
+
+  # 语言设置 (zh: 中文, en: 英文)
+  # 影响AI生成的描述语言和推送消息的语言
+  language: "zh"
+
+  # AI 模型配置
+  model:
+    # 模型提供商 (kimi, deepseek, openai)
+    provider: "kimi"
+
+    # 模型名称
+    name: "kimi-k2-0905-preview"
+
+    # API配置 - 从secrets.yaml加载
+    api_key: "${secrets.ai.kimi.api_key}"
+    base_url: "${secrets.ai.kimi.base_url}"
+
+    # 模型参数
+    temperature: 0.1
+    max_tokens: 1000
+
+  # AI 过滤提示词
+  prompt: |
+    Evaluate this article for relevance to specific biological processes/applications.
+
+    Core Application Areas:
+    1. phenotype from genotype
+    2. life cycle simulation
+    3. cell cycle regulator
+    4. single-cell multi-omics
+    5. scATAC-seq
+    6. scRNA-seq
+    7. chromatin accessibility
+    8. gene regulatory network
+    9. enhancer-gene linking
+    10. chromatin potential
+    11. GWAS variant enrichment
+    12. eQTL
+    13. metabolomics analysis
+    14. proteomics analysis
+    15. computational metabolomics
+    16. computational proteomics
+    17. virtual cell
+    18. aging
+    19. foundation model
+
+    Article Information:
+    Title: {title}
+    Abstract: {abstract}
+    Journal: {journal}
+
+    Instructions:
+    - Determine if the article focuses on ONE OR MORE of the core application areas above
+    - If relevant, provide a brief description in {language} of the main work and which application area(s) it addresses
+    - Score relevance from 1-10 (10 being most relevant to core areas)
+    - Be strict: only mark as relevant if it directly addresses biological processes in these areas
+
+    Return JSON only:
+    {{
+      "relevant": true/false,
+      "score": 1-10,
+      "description": "Brief description in {language} of main work and application area(s)",
+      "application_areas": ["list of matching areas from above"]
+    }}
+
+# 飞书推送配置
+feishu:
+  # 是否启用飞书推送
+  enabled: true
+
+  # 飞书机器人 Webhook URL - 从secrets.yaml加载
+  webhook_url: "${secrets.feishu.webhook_url}"
+
+  # 推送配置
+  push_config:
+    # 每次推送的最大文章数
+    max_articles_per_push: 100
+
+    # 是否推送文章摘要
+    include_abstract: true
+
+    # 摘要最大长度
+    abstract_max_length: 200
+
+    # 是否推送AI评估结果
+    include_ai_evaluation: true
+
+    # 推送语言设置 (zh: 中文, en: 英文)
+    # 影响推送消息的标签和AI描述的语言
+    language: "zh"
+
+    # 推送模板
+    template: |
+      📰 **生物文章推送**
+
+      📊 **搜索统计**
+      - 搜索期刊: {journal_count} 个
+      - 候选文章: {total_articles} 篇
+      - AI筛选后: {filtered_articles} 篇
+
+      📝 **精选文章**
+
+      {articles_content}
+
+      ---
+      🤖 *AI智能筛选 | 生物文章推送*
+      ⏰ *生成时间: {timestamp}*
