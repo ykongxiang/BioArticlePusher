@@ -291,6 +291,8 @@ feishu:
 
 ## 命令行使用
 
+### Python 命令行工具
+
 ```bash
 # 搜索最近7天的文章并推送
 bioarticle-pusher
@@ -304,6 +306,87 @@ bioarticle-pusher --config my_config.yaml --secrets my_secrets.yaml
 # 只搜索，不推送
 bioarticle-pusher --no-push
 ```
+
+### Shell 脚本使用（推荐用于定时任务）
+
+项目提供了 `article_pusher.sh` 脚本，整合了文章搜索、cron任务管理和日志查看功能。
+
+#### 基本用法
+
+```bash
+# 1. 执行文章搜索（默认）
+./article_pusher.sh
+# 或
+./article_pusher.sh run
+
+# 2. 快速设置每天3点的cron任务
+./article_pusher.sh setup-cron
+
+# 3. 进入cron任务管理菜单
+./article_pusher.sh manage
+
+# 4. 查看帮助
+./article_pusher.sh help
+```
+
+#### 自定义配置
+
+编辑脚本顶部的配置区域：
+
+```bash
+# Conda 环境名称
+CONDA_ENV_NAME="bioinfopusher"
+
+# 配置文件路径
+YAML_PATH="article_search_config.yaml"
+SECRET_PATH="root/secret.yaml"
+
+# 调试模式（通过环境变量 DEBUG=1 启用）
+DEBUG=${DEBUG:-0}
+```
+
+#### 调试模式
+
+启用调试模式查看详细信息：
+
+```bash
+DEBUG=1 ./article_pusher.sh
+```
+
+#### Cron 任务管理
+
+进入管理菜单后，可以：
+1. 查看当前 cron 任务
+2. 设置新的执行时间（支持自定义 cron 表达式）
+3. 删除 cron 任务
+4. 测试执行脚本（立即运行）
+5. 查看日志文件
+6. 退出
+
+#### 定时执行示例
+
+```bash
+# 设置每天凌晨3点自动执行
+./article_pusher.sh setup-cron
+
+# 或使用管理菜单设置自定义时间
+./article_pusher.sh manage
+# 然后选择选项2，输入cron表达式，例如：
+# 0 18 * * *  # 每天18点执行
+# 0 */6 * * *  # 每6小时执行一次
+```
+
+#### 日志文件
+
+日志文件保存在 `logs/` 目录下，按日期命名：
+- `bioinfo_search_YYYYMMDD.log`
+
+#### 注意事项
+
+- 确保脚本有执行权限：`chmod +x article_pusher.sh`
+- 确保 conda 环境已正确配置
+- 确保配置文件 `article_search_config.yaml` 存在
+- 脚本会自动检测并激活指定的 conda 环境
 
 ## Python API
 
