@@ -267,6 +267,22 @@ for journal, articles in results.items():
 
 只有评分≥5的文章会被保留。
 
+### 主题分类
+
+AI在评估文章时，还会自动为每篇文章分配一个主题类别，用于后续的分组推送：
+
+- **single-cell**: 单细胞分析相关
+- **genomics**: 基因组学相关
+- **proteomics**: 蛋白质组学相关
+- **metabolomics**: 代谢组学相关
+- **network**: 网络分析相关
+- **simulation**: 模拟建模相关
+- **foundation_model**: 基础模型相关
+- **aging**: 衰老研究相关
+- **other**: 其他类别
+
+主题分类信息会保存在文章的 `ai_evaluation.topic` 字段中，用于后续的主题分组推送。
+
 ### 演示模式
 
 如果没有API密钥，可以启用演示模式：
@@ -536,11 +552,45 @@ authors:
 feishu:
   enabled: true
   push_config:
-    max_articles_per_push: 10    # 每次最多推送10篇文章
+    max_articles_per_push: 10    # 每次最多推送10篇文章（主题分组时，是每个主题单条消息的最大文章数）
+    group_by_topic: true         # 是否按主题分批次推送（默认：true）
     include_abstract: true       # 是否包含摘要
     abstract_max_length: 200     # 摘要最大长度
     include_ai_evaluation: true  # 是否包含AI评估结果
 ```
+
+**主题分组推送功能：**
+
+当 `group_by_topic: true` 时，系统会：
+1. 根据AI识别的主题对文章进行分组
+2. 每个主题推送一条独立的消息，消息标题包含主题名称
+3. 如果某个主题的文章超过 `max_articles_per_push` 限制，会自动分为多批推送
+4. 推送顺序按主题文章数量降序排列
+
+**支持的主题类别：**
+- `single-cell`: 单细胞分析
+- `genomics`: 基因组学
+- `proteomics`: 蛋白质组学
+- `metabolomics`: 代谢组学
+- `network`: 网络分析
+- `simulation`: 模拟建模
+- `foundation_model`: 基础模型
+- `aging`: 衰老研究
+- `other`: 其他
+
+**使用示例：**
+
+假设检索到100篇文章，AI过滤后剩余60篇，分布在以下主题：
+- 单细胞分析：40篇
+- 基因组学：15篇
+- 其他：5篇
+
+如果 `max_articles_per_push: 10`，推送结果：
+- 单细胞分析主题：推送4条消息（10+10+10+10篇）
+- 基因组学主题：推送2条消息（10+5篇）
+- 其他主题：推送1条消息（5篇）
+
+总共推送7条消息，每条消息标题都会显示对应的主题名称。
 
 ### 自定义推送模板
 

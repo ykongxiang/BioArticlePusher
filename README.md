@@ -267,13 +267,35 @@ ai_filtering:
 - `enabled`: 是否启用飞书推送（true/false）
 - `webhook_url`: 飞书机器人Webhook URL（从secrets.yaml引用：`${secrets.feishu.webhook_url}`）
 - `push_config.max_articles_per_push`: 每次推送的最大文章数（默认：10）
+  - 当启用主题分组推送时，这是每个主题单条消息的最大文章数
+  - 如果某个主题的文章超过此限制，会自动分为多批推送
+- `push_config.group_by_topic`: 是否按主题分批次推送（默认：`true`）
+  - 设置为 `true` 时，文章会按AI识别的主题分组，每个主题单独推送一条消息
+  - 设置为 `false` 时，使用原有的单次推送方式（所有文章一条消息）
+  - 支持的主题类别：`single-cell`（单细胞分析）、`genomics`（基因组学）、`proteomics`（蛋白质组学）、`metabolomics`（代谢组学）、`network`（网络分析）、`simulation`（模拟建模）、`foundation_model`（基础模型）、`aging`（衰老研究）、`other`（其他）
 - `push_config.include_abstract`: 是否推送文章摘要（true/false）
 - `push_config.abstract_max_length`: 摘要最大长度（默认：200）
 - `push_config.include_ai_evaluation`: 是否推送AI评估结果（true/false）
 - `push_config.language`: 推送语言设置（`"zh"` 中文，`"en"` 英文，默认：`"zh"`）
   - 影响推送消息的标签语言（如"期刊"→"Journal"、"作者"→"Authors"等）
   - 影响AI评估描述的语言（AI生成的description字段）
-- `push_config.template`: 推送消息模板，可自定义格式
+  - 影响主题名称的显示语言
+- `push_config.template`: 推送消息模板，可自定义格式（仅在 `group_by_topic: false` 时使用）
+
+**主题分组推送示例：**
+```yaml
+feishu:
+  push_config:
+    max_articles_per_push: 10  # 每个主题单条消息最多10篇文章
+    group_by_topic: true  # 启用主题分组推送
+```
+
+当启用主题分组推送时：
+- 文章会按AI识别的主题自动分组
+- 每个主题推送一条独立的消息，消息标题包含主题名称
+- 如果某个主题的文章超过 `max_articles_per_push` 限制，会自动分为多批推送
+- 推送顺序按主题文章数量降序排列
+- 日志中会显示主题分组信息和推送进度
 
 **语言设置示例：**
 
