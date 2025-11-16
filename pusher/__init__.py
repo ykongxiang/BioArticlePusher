@@ -11,7 +11,7 @@ BioArticlePusher - 生物文章推送系统
 - 自动推送筛选后的文章到飞书群聊
 - 关键词过滤和结果保存
 """
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "ykongxiang"
 
 from .search import ArticleSearcher
