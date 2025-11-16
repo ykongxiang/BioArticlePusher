@@ -143,6 +143,7 @@ Return JSON only:
             "webhook_url": "${secrets.feishu.webhook_url}",
             "push_config": {
                 "max_articles_per_push": 10,
+                "group_by_topic": True,  # 是否按主题分批次推送
                 "include_abstract": True,
                 "abstract_max_length": 200,
                 "include_ai_evaluation": True,

@@ -43,7 +43,7 @@ class FeishuPusher:
                      filtered_articles: List[Dict[str, Any]],
                      search_days: int) -> bool:
         """
-        推送文章到飞书
+        推送文章到飞书（按主题分批次推送）
 
         Args:
             all_results: 原始搜索结果，按期刊分组
@@ -58,11 +58,16 @@ class FeishuPusher:
             return True
 
         try:
-            # 准备推送内容（卡片消息格式）
-            card_message = self._prepare_message(all_results, filtered_articles, search_days)
-
-            # 发送到飞书
-            return self._send_to_feishu(card_message)
+            # 检查是否启用主题分组推送
+            group_by_topic = self.config.get('push_config', {}).get('group_by_topic', True)
+            
+            if group_by_topic:
+                # 按主题分组并分批推送
+                return self._push_by_topics(all_results, filtered_articles, search_days)
+            else:
+                # 原有推送方式（单次推送）
+                card_message = self._prepare_message(all_results, filtered_articles, search_days)
+                return self._send_to_feishu(card_message)
 
         except Exception as e:
             logger.error(f"飞书推送失败: {e}")
@@ -373,6 +378,263 @@ class FeishuPusher:
         # 底部信息
         elements.append({"tag": "hr"})
         footer_text = "🤖 *AI Smart Filtering | Biological Article Push*" if self.language == 'en' else "🤖 *AI智能筛选 | 生物文章推送*"
+        elements.append({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": footer_text
+            }
+        })
+        
+        # 构建卡片消息
+        card_message = {
+            "msg_type": "interactive",
+            "card": {
+                "config": {
+                    "wide_screen_mode": True
+                },
+                "elements": elements
+            }
+        }
+        
+        return card_message
+
+    def _group_articles_by_topic(self, articles: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        按主题分组文章
+
+        Args:
+            articles: 文章列表
+
+        Returns:
+            Dict[str, List[Dict]]: 按主题分组的文章字典
+        """
+        topic_groups = {}
+        
+        for article in articles:
+            # 获取文章的主题
+            topic = "other"  # 默认主题
+            if 'ai_evaluation' in article:
+                ai_eval = article['ai_evaluation']
+                topic = ai_eval.get('topic', 'other')
+            
+            # 标准化主题名称
+            topic = topic.lower().strip()
+            if not topic or topic == '':
+                topic = 'other'
+            
+            # 添加到对应主题组
+            if topic not in topic_groups:
+                topic_groups[topic] = []
+            topic_groups[topic].append(article)
+        
+        return topic_groups
+    
+    def _push_by_topics(self, all_results: Dict[str, List[Dict[str, Any]]],
+                       filtered_articles: List[Dict[str, Any]],
+                       search_days: int) -> bool:
+        """
+        按主题分批次推送文章
+
+        Args:
+            all_results: 原始搜索结果
+            filtered_articles: 过滤后的文章列表
+            search_days: 搜索天数
+
+        Returns:
+            bool: 推送是否成功
+        """
+        # 按主题分组
+        topic_groups = self._group_articles_by_topic(filtered_articles)
+        
+        logger.info(f"📊 文章已按主题分组，共 {len(topic_groups)} 个主题")
+        for topic, articles in topic_groups.items():
+            logger.info(f"  - {topic}: {len(articles)} 篇文章")
+        
+        # 计算统计信息
+        journal_count = len(all_results)
+        total_articles = sum(len(articles) for articles in all_results.values())
+        
+        # 按主题顺序推送（按文章数量降序）
+        sorted_topics = sorted(topic_groups.items(), key=lambda x: len(x[1]), reverse=True)
+        
+        all_success = True
+        topic_index = 0
+        
+        for topic, topic_articles in sorted_topics:
+            topic_index += 1
+            topic_name_display = self._get_topic_display_name(topic)
+            
+            logger.info(f"📤 推送主题 [{topic_index}/{len(sorted_topics)}]: {topic_name_display} ({len(topic_articles)} 篇文章)")
+            
+            # 如果该主题的文章超过单条消息限制，需要分批推送
+            if len(topic_articles) > self.max_articles_per_push:
+                # 分批推送
+                batch_count = (len(topic_articles) + self.max_articles_per_push - 1) // self.max_articles_per_push
+                logger.info(f"  ⚠️ 主题文章数量超过限制，将分为 {batch_count} 批推送")
+                
+                for batch_idx in range(batch_count):
+                    start_idx = batch_idx * self.max_articles_per_push
+                    end_idx = min(start_idx + self.max_articles_per_push, len(topic_articles))
+                    batch_articles = topic_articles[start_idx:end_idx]
+                    
+                    logger.info(f"  📨 推送第 {batch_idx + 1}/{batch_count} 批 ({len(batch_articles)} 篇文章)")
+                    
+                    # 构建该批次的推送消息
+                    card_message = self._build_topic_message(
+                        all_results, batch_articles, search_days,
+                        journal_count, total_articles, len(filtered_articles),
+                        topic_name_display, batch_idx + 1, batch_count
+                    )
+                    
+                    # 发送推送
+                    if not self._send_to_feishu(card_message):
+                        all_success = False
+                        logger.error(f"  ❌ 主题 {topic_name_display} 第 {batch_idx + 1} 批推送失败")
+                    else:
+                        logger.info(f"  ✅ 主题 {topic_name_display} 第 {batch_idx + 1} 批推送成功")
+                    
+                    # 批次之间稍作延迟，避免请求过快
+                    if batch_idx < batch_count - 1:
+                        import time
+                        time.sleep(0.5)
+            else:
+                # 单批推送
+                card_message = self._build_topic_message(
+                    all_results, topic_articles, search_days,
+                    journal_count, total_articles, len(filtered_articles),
+                    topic_name_display, 1, 1
+                )
+                
+                if not self._send_to_feishu(card_message):
+                    all_success = False
+                    logger.error(f"  ❌ 主题 {topic_name_display} 推送失败")
+                else:
+                    logger.info(f"  ✅ 主题 {topic_name_display} 推送成功")
+        
+        if all_success:
+            logger.info(f"✅ 所有主题推送完成，共推送 {len(sorted_topics)} 个主题")
+        else:
+            logger.warning(f"⚠️ 部分主题推送失败，共 {len(sorted_topics)} 个主题")
+        
+        return all_success
+    
+    def _get_topic_display_name(self, topic: str) -> str:
+        """
+        获取主题的显示名称
+
+        Args:
+            topic: 主题名称
+
+        Returns:
+            str: 显示名称
+        """
+        topic_names = {
+            'single-cell': '单细胞分析' if self.language == 'zh' else 'Single-cell Analysis',
+            'genomics': '基因组学' if self.language == 'zh' else 'Genomics',
+            'proteomics': '蛋白质组学' if self.language == 'zh' else 'Proteomics',
+            'metabolomics': '代谢组学' if self.language == 'zh' else 'Metabolomics',
+            'network': '网络分析' if self.language == 'zh' else 'Network Analysis',
+            'simulation': '模拟建模' if self.language == 'zh' else 'Simulation',
+            'foundation_model': '基础模型' if self.language == 'zh' else 'Foundation Model',
+            'aging': '衰老研究' if self.language == 'zh' else 'Aging',
+            'other': '其他' if self.language == 'zh' else 'Other'
+        }
+        return topic_names.get(topic.lower(), topic)
+    
+    def _build_topic_message(self, all_results: Dict[str, List[Dict[str, Any]]],
+                            topic_articles: List[Dict[str, Any]],
+                            search_days: int,
+                            journal_count: int,
+                            total_articles: int,
+                            filtered_count: int,
+                            topic_name: str,
+                            batch_num: int = 1,
+                            total_batches: int = 1) -> Dict[str, Any]:
+        """
+        构建主题推送消息
+
+        Args:
+            all_results: 原始搜索结果
+            topic_articles: 该主题的文章列表
+            search_days: 搜索天数
+            journal_count: 期刊数量
+            total_articles: 总文章数
+            filtered_count: 过滤后文章总数
+            topic_name: 主题名称
+            batch_num: 当前批次号
+            total_batches: 总批次数
+
+        Returns:
+            Dict[str, Any]: 卡片消息结构
+        """
+        elements = []
+        
+        # 标题部分
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if self.language == 'en':
+            header_content = f"""**📰 Biological Article Push - {topic_name}**
+
+**📊 Search Statistics**
+- Journals searched: {journal_count}
+- Candidate articles: {total_articles}
+- After AI filtering: {filtered_count}
+- Topic: {topic_name} ({len(topic_articles)} articles)"""
+            if total_batches > 1:
+                header_content += f"\n- Batch: {batch_num}/{total_batches}"
+            header_content += f"\n- Generated at: {timestamp}"""
+        else:
+            header_content = f"""**📰 生物文章推送 - {topic_name}**
+
+**📊 搜索统计**
+- 搜索期刊: {journal_count} 个
+- 候选文章: {total_articles} 篇
+- AI筛选后: {filtered_count} 篇
+- 主题: {topic_name} ({len(topic_articles)} 篇)"""
+            if total_batches > 1:
+                header_content += f"\n- 批次: {batch_num}/{total_batches}"
+            header_content += f"\n- 生成时间: {timestamp}"""
+        
+        elements.append({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": header_content
+            }
+        })
+        
+        # 分隔线
+        elements.append({"tag": "hr"})
+        
+        # 文章列表
+        if not topic_articles:
+            no_articles_msg = "📭 No articles found" if self.language == 'en' else "📭 未找到文章"
+            elements.append({
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": no_articles_msg
+                }
+            })
+        else:
+            for i, article in enumerate(topic_articles, 1):
+                # 每篇文章作为一个div
+                article_content = self._format_article_markdown(article, i)
+                elements.append({
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": article_content
+                    }
+                })
+                
+                # 文章之间添加分隔线（除了最后一篇）
+                if i < len(topic_articles):
+                    elements.append({"tag": "hr"})
+        
+        # 底部信息
+        elements.append({"tag": "hr"})
+        footer_text = f"🤖 *AI Smart Filtering | {topic_name}*" if self.language == 'en' else f"🤖 *AI智能筛选 | {topic_name}*"
         elements.append({
             "tag": "div",
             "text": {

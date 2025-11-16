@@ -416,11 +416,31 @@ class AIFilter:
                 description = "Article does not focus on specified biological applications"
             application_areas = []
 
+        # 确定主题分类
+        topic = "other"
+        if any(word in full_text for word in ['single-cell', 'single cell', 'scrna', 'scatac']):
+            topic = "single-cell"
+        elif any(word in full_text for word in ['genomics', 'genome', 'genomic', 'dna', 'rna']):
+            topic = "genomics"
+        elif any(word in full_text for word in ['proteomics', 'proteome', 'protein']):
+            topic = "proteomics"
+        elif any(word in full_text for word in ['metabolomics', 'metabolome', 'metabolic']):
+            topic = "metabolomics"
+        elif any(word in full_text for word in ['network', 'regulatory network', 'gene regulatory']):
+            topic = "network"
+        elif any(word in full_text for word in ['simulation', 'modeling', 'virtual cell']):
+            topic = "simulation"
+        elif any(word in full_text for word in ['foundation model', 'foundational model', 'llm', 'language model']):
+            topic = "foundation_model"
+        elif any(word in full_text for word in ['aging', 'ageing', 'senescence']):
+            topic = "aging"
+        
         return {
             "relevant": relevant,
             "score": score,
             "description": description,
-            "application_areas": application_areas
+            "application_areas": application_areas,
+            "topic": topic
         }
 
     def _call_kimi_api(self, prompt: str) -> Dict[str, Any]:
